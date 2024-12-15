@@ -2,6 +2,7 @@
 
 mod utils;
 
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     fs::File,
     io::{BufWriter, Write},
@@ -22,7 +23,7 @@ pub fn main() {
 
     const image_height: f64 = image_width / aspect_ratio;
 
-    let mut out = File::create("output/image_02.ppm").unwrap();
+    let mut out = File::create("output/image_021.ppm").unwrap();
     let mut writer = BufWriter::new(&mut out);
 
     // camera
@@ -51,19 +52,25 @@ pub fn main() {
         .write_fmt(format_args!("P3\n{} {}\n255\n", image_width, image_height))
         .unwrap();
 
-    for j in 0..image_height as u32 {
-        for i in 0..image_width as u32 {
-            let pixel_center =
-                pixel00_loc + (pixel_delta_u * i as f64) + (pixel_delta_v * j as f64);
-            let ray_direction = pixel_center - camera_center;
-            let ray = Ray {
-                point: camera_center,
-                direction: ray_direction,
-            };
+    let pixels: Vec<Vec3D> = (0..image_height as u32)
+        .into_par_iter()
+        .flat_map(|j| {
+            (0..image_width as u32).into_par_iter().map(move |i| {
+                let pixel_center =
+                    pixel00_loc + (pixel_delta_u * i as f64) + (pixel_delta_v * j as f64);
+                let ray_direction = pixel_center - camera_center;
+                let ray = Ray {
+                    point: camera_center,
+                    direction: ray_direction,
+                };
 
-            let pixel_color: Vec3D = ray_color(ray);
-            utils::write_ppm(&mut writer, pixel_color);
-        }
+                ray_color(ray)
+            })
+        })
+        .collect();
+
+    for pixel in pixels {
+        utils::write_ppm(&mut writer, pixel);
     }
 
     writer.flush().unwrap();
