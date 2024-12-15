@@ -13,6 +13,7 @@ pub fn write_ppm(out: &mut BufWriter<&mut File>, color: Vec3D) {
     out.write_fmt(format_args!("{r} {g} {b}\n")).unwrap();
 }
 
+#[derive(Clone, Copy)]
 pub struct Ray {
     pub point: Vec3D,
     pub direction: Vec3D,

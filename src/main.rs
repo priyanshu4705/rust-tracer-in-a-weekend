@@ -10,20 +10,44 @@ use std::{
 use utils::Ray;
 use vec3D::Vec3D;
 
+fn hit_sphere(center: Vec3D, radius: f64, ray: Ray) -> bool {
+    let oc = ray.point - center;
+    let a = ray.direction.dot(ray.direction);
+    let b = oc.dot(ray.direction) * -2.0;
+    let c = oc.dot(oc) - radius * radius;
+    let discriminant = b * b - (4.0 * a * c);
+
+    discriminant >= 0.0
+}
+
 fn ray_color(ray: Ray) -> Vec3D {
+    if hit_sphere(Vec3D::new(0.0, 0.0, -1.0), 0.5, ray) {
+        return Vec3D::new(1.0, 0.0, 0.0);
+    }
+
     let unit_direction = ray.direction.unit();
     let a = 0.5 * (unit_direction.y + 1.0);
     (Vec3D::ones() * (1.0 - a)) + (Vec3D::new(0.5, 0.7, 1.0) * a)
 }
 
 pub fn main() {
+    let args = std::env::args().collect::<Vec<String>>();
+
+    if args.len() != 2 {
+        println!("Usage: rust-tracer-in-a-weekend <image-number>");
+        return;
+    }
+
+    let image_number = &args[1];
+
     // image
     const aspect_ratio: f64 = 16.0 / 9.0;
     const image_width: f64 = 400.0;
 
-    const image_height: f64 = image_width / aspect_ratio;
+    const ih: f64 = image_width / aspect_ratio;
+    const image_height: f64 = if ih < 1.0 { 1.0 } else { ih };
 
-    let mut out = File::create("output/image_021.ppm").unwrap();
+    let mut out = File::create(format!("output/image_{image_number}.ppm")).unwrap();
     let mut writer = BufWriter::new(&mut out);
 
     // camera
@@ -35,7 +59,7 @@ pub fn main() {
 
     // vectors across horizontal and vertical edges from camera center
     let viewport_u = Vec3D::new(viewport_width, 0.0, 0.0);
-    let viewport_v = Vec3D::new(0.0, -viewport_width, 0.0);
+    let viewport_v = Vec3D::new(0.0, -viewport_height, 0.0);
 
     // Calculate the horizontal and vertical delta vectors from pixel to pixel.
     let pixel_delta_u = viewport_u / image_width;
